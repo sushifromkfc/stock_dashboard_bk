@@ -1,9 +1,11 @@
-import yahooFinance from "yahoo-finance2";
+import { YahooFinance } from "yahoo-finance2";
 import { FmpMetrics } from "./fmp";
+
+const yf = new YahooFinance();
 
 export async function fetchYahooMetrics(ticker: string): Promise<FmpMetrics> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result: any = await yahooFinance.quoteSummary(ticker, {
+  const result: any = await yf.quoteSummary(ticker, {
     modules: ["incomeStatementHistory", "balanceSheetHistory", "price"],
   });
 
