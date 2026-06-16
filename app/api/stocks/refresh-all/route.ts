@@ -14,6 +14,7 @@ export async function POST() {
   }
 
   const results: { ticker: string; status: "ok" | "error"; error?: string }[] = [];
+  let apiStructureErrors = 0;
 
   // 2. 순차 처리
   for (const stock of stocks) {
@@ -46,7 +47,9 @@ export async function POST() {
 
       results.push({ ticker: stock.ticker, status: "ok" });
     } catch (err) {
-      results.push({ ticker: stock.ticker, status: "error", error: String(err) });
+      const errStr = String(err);
+      if (errStr.includes("YAHOO_API_STRUCTURE_CHANGED")) apiStructureErrors++;
+      results.push({ ticker: stock.ticker, status: "error", error: errStr });
     }
 
     // rate limit 보호용 딜레이
@@ -56,5 +59,9 @@ export async function POST() {
   const succeeded = results.filter((r) => r.status === "ok").length;
   const failed = results.filter((r) => r.status === "error").length;
 
-  return NextResponse.json({ succeeded, failed, results });
+  // API 구조 변경 감지: 전체 종목의 30% 이상에서 구조 오류 발생 시 경고
+  const apiStructureChanged =
+    stocks.length > 0 && apiStructureErrors / stocks.length >= 0.3;
+
+  return NextResponse.json({ succeeded, failed, results, apiStructureChanged });
 }

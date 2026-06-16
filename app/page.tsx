@@ -44,6 +44,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState<{ succeeded: number; failed: number } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [apiStructureChanged, setApiStructureChanged] = useState(false);
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("");
 
@@ -67,6 +68,7 @@ export default function Home() {
       const res = await fetch("/api/stocks/refresh-all", { method: "POST" });
       const data = await res.json();
       setRefreshResult({ succeeded: data.succeeded, failed: data.failed });
+      if (data.apiStructureChanged) setApiStructureChanged(true);
       await fetchStocks();
     } catch (err) {
       console.error("Refresh failed", err);
@@ -148,6 +150,25 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Yahoo Finance API structure change warning */}
+      {apiStructureChanged && (
+        <div className="px-6 py-3 bg-red-50 border-b border-red-200 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-red-800">
+            <span className="text-base">⚠️</span>
+            <span>
+              <strong>Yahoo Finance API 구성이 변경된 것 같습니다.</strong>{" "}
+              재무 데이터가 정상적으로 수집되지 않고 있어요. 개발자 확인이 필요합니다.
+            </span>
+          </div>
+          <button
+            onClick={() => setApiStructureChanged(false)}
+            className="ml-4 text-xs text-red-600 underline hover:text-red-800 whitespace-nowrap"
+          >
+            닫기
+          </button>
+        </div>
+      )}
 
       {/* Refresh result banner */}
       {refreshResult && (

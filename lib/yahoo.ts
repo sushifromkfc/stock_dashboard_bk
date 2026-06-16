@@ -33,6 +33,14 @@ export async function fetchYahooMetrics(ticker: string): Promise<YahooResult> {
   // Most recent annual data point
   const latest = fundamentals?.[fundamentals.length - 1] ?? null;
 
+  // Detect API structure change: if both fundamentals AND price are empty,
+  // Yahoo Finance's API shape likely changed.
+  const hasFundamentals = Array.isArray(fundamentals) && fundamentals.length > 0;
+  const hasPrice = !!summary?.price?.marketCap;
+  if (!hasFundamentals && !hasPrice) {
+    throw new Error("YAHOO_API_STRUCTURE_CHANGED");
+  }
+
   return {
     ebit_ttm: latest?.EBIT ?? latest?.operatingIncome ?? null,
     working_capital: latest?.workingCapital ?? null,
