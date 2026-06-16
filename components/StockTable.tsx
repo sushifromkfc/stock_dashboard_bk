@@ -8,6 +8,7 @@ import {
   flexRender,
   ColumnDef,
   SortingState,
+  ColumnFiltersState,
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { Stock } from "@/types/stock";
@@ -63,6 +64,7 @@ const columns: ColumnDef<Stock>[] = [
     id: "sector",
     header: "섹터",
     accessorFn: (row) => row.sector,
+    filterFn: (row, _, filterValue) => row.original.sector === filterValue,
     cell: ({ getValue }) => {
       const sector = getValue() as string;
       const colorClass =
@@ -124,6 +126,10 @@ export default function StockTable({ data, globalFilter, sectorFilter, onDeleted
   const [sorting, setSorting] = useState<SortingState>([{ id: "market_cap", desc: true }]);
   const [deletingTicker, setDeletingTicker] = useState<string | null>(null);
 
+  const columnFilters: ColumnFiltersState = sectorFilter
+    ? [{ id: "sector", value: sectorFilter }]
+    : [];
+
   async function handleDelete(ticker: string) {
     if (!confirm(`${ticker} 종목을 삭제할까요?`)) return;
     setDeletingTicker(ticker);
@@ -154,14 +160,10 @@ export default function StockTable({ data, globalFilter, sectorFilter, onDeleted
     },
   ];
 
-  const filtered = sectorFilter
-    ? data.filter((s) => s.sector === sectorFilter)
-    : data;
-
   const table = useReactTable({
-    data: filtered,
+    data,
     columns: allColumns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter, columnFilters },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
