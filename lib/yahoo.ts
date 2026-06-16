@@ -1,4 +1,4 @@
-import { YahooFinance } from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import { FmpMetrics } from "./fmp";
 
 const yf = new YahooFinance();
