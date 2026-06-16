@@ -13,8 +13,30 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
   const [nameEn, setNameEn] = useState("");
   const [sector, setSector] = useState("");
   const [exchange, setExchange] = useState("NASDAQ");
-  const [status, setStatus] = useState<"idle" | "saving" | "fetching" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "looking-up" | "saving" | "fetching" | "done" | "error">("idle");
+  const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "found" | "notfound">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleTickerBlur() {
+    const t = ticker.trim().toUpperCase();
+    if (!t) return;
+
+    setLookupStatus("loading");
+    try {
+      const res = await fetch(`/api/stocks/lookup?ticker=${encodeURIComponent(t)}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      if (data.name_en && !nameEn) setNameEn(data.name_en);
+      if (data.sector && !sector) setSector(data.sector);
+      if (data.exchange && data.exchange !== "NasdaqGS" && data.exchange !== "NMS") {
+        // keep user's exchange selection unless we get something useful
+      }
+      setLookupStatus("found");
+    } catch {
+      setLookupStatus("notfound");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,15 +64,14 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
         throw new Error(data.error ?? "종목 추가 실패");
       }
 
-      // 2. FMP에서 재무지표 자동 조회
+      // 2. Yahoo Finance에서 재무지표 자동 조회
       setStatus("fetching");
       const refreshRes = await fetch(`/api/stocks/${ticker.trim().toUpperCase()}/refresh`, {
         method: "POST",
       });
 
       if (!refreshRes.ok) {
-        // 재무지표 조회 실패해도 종목 자체는 추가됨 — 에러로 막지 않음
-        console.warn("FMP refresh failed for", ticker);
+        console.warn("Yahoo refresh failed for", ticker);
       }
 
       setStatus("done");
@@ -83,14 +104,29 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
             <label className="block text-xs font-medium text-gray-700 mb-1">
               티커 <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="AAPL"
-              required
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={ticker}
+                onChange={(e) => {
+                  setTicker(e.target.value.toUpperCase());
+                  setLookupStatus("idle");
+                }}
+                onBlur={handleTickerBlur}
+                placeholder="AAPL"
+                required
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {lookupStatus === "loading" && (
+                <span className="absolute right-3 top-2 text-xs text-gray-400">조회 중...</span>
+              )}
+              {lookupStatus === "found" && (
+                <span className="absolute right-3 top-2 text-xs text-green-600">✓ 자동 완성</span>
+              )}
+              {lookupStatus === "notfound" && (
+                <span className="absolute right-3 top-2 text-xs text-orange-500">종목 없음</span>
+              )}
+            </div>
           </div>
 
           {/* Korean name */}
@@ -107,7 +143,12 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
 
           {/* English name */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">영문 회사명</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              영문 회사명
+              {lookupStatus === "found" && nameEn && (
+                <span className="ml-1 text-green-600 font-normal">(자동 완성됨)</span>
+              )}
+            </label>
             <input
               type="text"
               value={nameEn}
@@ -120,7 +161,12 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
           {/* Sector + Exchange */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">섹터</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                섹터
+                {lookupStatus === "found" && sector && (
+                  <span className="ml-1 text-green-600 font-normal">(자동)</span>
+                )}
+              </label>
               <input
                 type="text"
                 value={sector}
@@ -149,7 +195,7 @@ export default function AddStockModal({ onClose, onAdded }: Props) {
             <p className="text-xs text-blue-600">DB에 저장 중...</p>
           )}
           {status === "fetching" && (
-            <p className="text-xs text-blue-600">FMP에서 재무지표 가져오는 중...</p>
+            <p className="text-xs text-blue-600">Yahoo Finance에서 재무지표 가져오는 중...</p>
           )}
           {status === "done" && (
             <p className="text-xs text-green-600">추가 완료!</p>
