@@ -78,7 +78,7 @@ const columns: ColumnDef<Stock>[] = [
   },
   {
     id: "ebit_ttm",
-    header: "EBIT (TTM)",
+    header: "EBIT (Annual)",
     accessorFn: (row) => row.metrics?.ebit_ttm ?? null,
     sortUndefined: "last",
     cell: ({ getValue }) => <MetricCell value={getValue() as number | null} />,
@@ -121,7 +121,7 @@ interface Props {
 }
 
 export default function StockTable({ data, globalFilter, sectorFilter, onDeleted }: Props) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "market_cap", desc: true }]);
   const [deletingTicker, setDeletingTicker] = useState<string | null>(null);
 
   async function handleDelete(ticker: string) {
