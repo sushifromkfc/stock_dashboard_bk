@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { fetchFmpMetrics } from "@/lib/fmp";
+import { fetchYahooMetrics } from "@/lib/yahoo";
 
 // POST /api/stocks/refresh-all
 export async function POST() {
@@ -15,10 +15,10 @@ export async function POST() {
 
   const results: { ticker: string; status: "ok" | "error"; error?: string }[] = [];
 
-  // 2. 순차 처리 (FMP 무료 플랜 rate limit 보호)
+  // 2. 순차 처리 (Yahoo Finance rate limit 보호용 딜레이)
   for (const stock of stocks) {
     try {
-      const metrics = await fetchFmpMetrics(stock.ticker);
+      const metrics = await fetchYahooMetrics(stock.ticker);
 
       const { error: upsertError } = await supabase
         .from("stock_key_metrics")
@@ -27,7 +27,7 @@ export async function POST() {
             stock_id: stock.id,
             period: "TTM",
             ...metrics,
-            data_source: "fmp",
+            data_source: "yahoo",
             updated_at: new Date().toISOString(),
           },
           { onConflict: "stock_id,period" }

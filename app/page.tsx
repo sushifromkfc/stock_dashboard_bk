@@ -123,7 +123,7 @@ export default function Home() {
               disabled={refreshing}
               className="px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {refreshing ? "데이터 수집 중..." : "전체 갱신 (FMP)"}
+              {refreshing ? "데이터 수집 중..." : "전체 갱신 (Yahoo Finance)"}
             </button>
           </div>
         </div>

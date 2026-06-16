@@ -16,11 +16,17 @@ async function fmpFetch<T>(endpoint: string, symbol: string, extra = ""): Promis
   return res.json();
 }
 
+// FMP uses hyphens for tickers with dots (e.g. BRK.B → BRK-B)
+function normalizeTicker(ticker: string): string {
+  return ticker.replace(".", "-");
+}
+
 export async function fetchFmpMetrics(ticker: string): Promise<FmpMetrics> {
+  const fmpTicker = normalizeTicker(ticker);
   const [incomeData, balanceData, profileData] = await Promise.all([
-    fmpFetch<IncomeStatement[]>("income-statement", ticker, "&limit=1"),
-    fmpFetch<BalanceSheet[]>("balance-sheet-statement", ticker, "&limit=1"),
-    fmpFetch<Profile[]>("profile", ticker),
+    fmpFetch<IncomeStatement[]>("income-statement", fmpTicker, "&limit=1"),
+    fmpFetch<BalanceSheet[]>("balance-sheet-statement", fmpTicker, "&limit=1"),
+    fmpFetch<Profile[]>("profile", fmpTicker),
   ]);
 
   const income = Array.isArray(incomeData) ? incomeData[0] ?? null : null;

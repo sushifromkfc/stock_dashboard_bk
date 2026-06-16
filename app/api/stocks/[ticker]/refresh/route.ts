@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { fetchFmpMetrics } from "@/lib/fmp";
+import { fetchYahooMetrics } from "@/lib/yahoo";
 
 // POST /api/stocks/[ticker]/refresh
 export async function POST(
@@ -21,13 +21,13 @@ export async function POST(
     return NextResponse.json({ error: "Stock not found" }, { status: 404 });
   }
 
-  // 2. FMP에서 재무 데이터 가져오기
+  // 2. Yahoo Finance에서 재무 데이터 가져오기
   let metrics;
   try {
-    metrics = await fetchFmpMetrics(upperTicker);
+    metrics = await fetchYahooMetrics(upperTicker);
   } catch (err) {
     return NextResponse.json(
-      { error: `FMP fetch failed: ${err}` },
+      { error: `Yahoo Finance fetch failed: ${err}` },
       { status: 502 }
     );
   }
@@ -40,7 +40,7 @@ export async function POST(
         stock_id: stock.id,
         period: "TTM",
         ...metrics,
-        data_source: "fmp",
+        data_source: "yahoo",
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stock_id,period" }
