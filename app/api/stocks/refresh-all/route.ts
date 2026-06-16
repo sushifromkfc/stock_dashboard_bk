@@ -15,10 +15,11 @@ export async function POST() {
 
   const results: { ticker: string; status: "ok" | "error"; error?: string }[] = [];
 
-  // 2. 순차 처리 (Yahoo Finance rate limit 보호용 딜레이)
+  // 2. 순차 처리
   for (const stock of stocks) {
     try {
       const metrics = await fetchYahooMetrics(stock.ticker);
+      const { sector, ...financialMetrics } = metrics;
 
       const { error: upsertError } = await supabase
         .from("stock_key_metrics")
@@ -26,7 +27,7 @@ export async function POST() {
           {
             stock_id: stock.id,
             period: "TTM",
-            ...metrics,
+            ...financialMetrics,
             data_source: "yahoo",
             updated_at: new Date().toISOString(),
           },
@@ -35,13 +36,21 @@ export async function POST() {
 
       if (upsertError) throw new Error(upsertError.message);
 
+      // 섹터 업데이트
+      if (sector) {
+        await supabase
+          .from("stocks")
+          .update({ sector })
+          .eq("id", stock.id);
+      }
+
       results.push({ ticker: stock.ticker, status: "ok" });
     } catch (err) {
       results.push({ ticker: stock.ticker, status: "error", error: String(err) });
     }
 
-    // FMP 무료 플랜: 초당 10 requests 제한 보호
-    await new Promise((r) => setTimeout(r, 150));
+    // rate limit 보호용 딜레이
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   const succeeded = results.filter((r) => r.status === "ok").length;

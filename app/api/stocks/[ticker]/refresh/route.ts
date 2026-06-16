@@ -32,14 +32,16 @@ export async function POST(
     );
   }
 
-  // 3. stock_key_metrics에 upsert (stock_id + period 기준)
+  const { sector, ...financialMetrics } = metrics;
+
+  // 3. stock_key_metrics에 upsert
   const { error: upsertError } = await supabase
     .from("stock_key_metrics")
     .upsert(
       {
         stock_id: stock.id,
         period: "TTM",
-        ...metrics,
+        ...financialMetrics,
         data_source: "yahoo",
         updated_at: new Date().toISOString(),
       },
@@ -48,6 +50,14 @@ export async function POST(
 
   if (upsertError) {
     return NextResponse.json({ error: upsertError.message }, { status: 500 });
+  }
+
+  // 4. 섹터 업데이트 (값이 있을 때만)
+  if (sector) {
+    await supabase
+      .from("stocks")
+      .update({ sector })
+      .eq("id", stock.id);
   }
 
   return NextResponse.json({ ticker: upperTicker, ...metrics });

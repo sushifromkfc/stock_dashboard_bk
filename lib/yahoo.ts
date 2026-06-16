@@ -1,35 +1,38 @@
 import YahooFinance from "yahoo-finance2";
 import { FmpMetrics } from "./fmp";
 
-const yf = new YahooFinance();
+const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
-export async function fetchYahooMetrics(ticker: string): Promise<FmpMetrics> {
+export type YahooResult = FmpMetrics & {
+  sector: string | null;
+};
+
+export async function fetchYahooMetrics(ticker: string): Promise<YahooResult> {
+  const period1 = new Date();
+  period1.setFullYear(period1.getFullYear() - 3);
+  const period1Str = period1.toISOString().slice(0, 10);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result: any = await yf.quoteSummary(ticker, {
-    modules: ["incomeStatementHistory", "balanceSheetHistory", "price"],
-  });
+  const [fundamentals, summary]: [any[], any] = await Promise.all([
+    yf.fundamentalsTimeSeries(ticker, {
+      period1: period1Str,
+      type: "annual",
+      module: "all",
+    }) as Promise<any[]>,
+    yf.quoteSummary(ticker, {
+      modules: ["price", "assetProfile"],
+    }) as Promise<any>,
+  ]);
 
-  const income = result.incomeStatementHistory?.incomeStatementHistory?.[0];
-  const balance = result.balanceSheetHistory?.balanceSheetHistory?.[0];
-  const price = result.price;
-
-  const currentAssets = balance?.totalCurrentAssets ?? null;
-  const currentLiabilities = balance?.totalCurrentLiabilities ?? null;
-  const working_capital =
-    currentAssets !== null && currentLiabilities !== null
-      ? currentAssets - currentLiabilities
-      : null;
-
-  const shortTermDebt = balance?.shortLongTermDebt ?? 0;
-  const longTermDebt = balance?.longTermDebt ?? 0;
-  const total_debt =
-    shortTermDebt || longTermDebt ? shortTermDebt + longTermDebt : null;
+  // Most recent annual data point
+  const latest = fundamentals?.[fundamentals.length - 1] ?? null;
 
   return {
-    ebit_ttm: income?.ebit ?? income?.operatingIncome ?? null,
-    working_capital,
-    net_ppe: balance?.propertyPlantEquipment ?? null,
-    total_debt,
-    market_cap: price?.marketCap ?? null,
+    ebit_ttm: latest?.EBIT ?? latest?.operatingIncome ?? null,
+    working_capital: latest?.workingCapital ?? null,
+    net_ppe: latest?.netPPE ?? null,
+    total_debt: latest?.totalDebt ?? null,
+    market_cap: summary?.price?.marketCap ?? null,
+    sector: summary?.assetProfile?.sector ?? null,
   };
 }
